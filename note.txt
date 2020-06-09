@@ -1,0 +1,162 @@
+
+Instalationa and configuration SVXBRIDGE on Debian 9 STRECH
+============================================================
+
+
+The svxbridge.py base on USRPAudio.py and was rewrite by SP2ONG to show possiblity 
+how to create DMR <>Analog SVXLink gate using USRP protocol. 
+
+
+Configure locales
+=================
+
+dpkg-reconfigure locales
+
+set correcttly you locales
+
+
+Install Midnight Commander (useful tools)
+==========================================
+
+apt install mc
+
+
+Install necessary packages:
+---------------------------
+
+apt-get install build-essential
+apt-get install git cmake libsigc++-2.0-dev libasound2-dev libpopt-dev libgcrypt11-dev tk-dev 
+apt-get install libgsm1-dev libspeex-dev libcurl4-openssl-dev libjsoncpp-dev groff curl
+
+
+Install DVSwitch packages:
+==========================
+
+Install packages necessary to DVSwitch:
+--------------------------------------
+
+apt-get install git python-pip python3-pip python-dev python3-dev libffi-dev libssl-dev
+
+
+Please don't use 44.xxx ipaddress for network to download DVSwitch packages.
+Because dvswitch.org use ip address 44.103.34.4 wich is not availabe via Amprnet only via Internet
+
+cd /opt/src
+wget http://dvswitch.org/install-dvswitch-repo
+chmod +x install-dvswitch-repo
+./install-dvswitch-repo
+apt-get update
+apt-get install analog-bridge
+apt-get install md380-emu
+apt-get install mmdvm-bridge
+
+Next configure Analog_Bridge.ini and MMDVM_Bridge.ini
+Run dvswitch packages:
+
+systemctl start md380-emu
+systemctl start analog_bridge
+systemctl start mmdvm_bridge
+
+We use md380-emu AMBE software emulator vocoder with Analog_Bridge to convert audio analog to dmr and oposit
+
+I recommend checking the operation of MB / AB / md380 using the DVSwitch Mobile Android application.
+
+
+Add ALSA loop to load modules in /etc/modules add line:
+-------------------------------------------------------
+
+snd_aloop
+
+and create file /etc/modprobe.d/alsa.conf which will be force use by sn_aloop index 0 for number cards:
+----------------------------------------------------------------------------------------------------------
+
+options snd-aloop index=0
+
+
+Install pyserial and pyaudio for svxbridge.py:
+=============================================
+
+pip install pyserial
+apt-get install python-pyaudio
+
+Copy /opt/svxbridge/utils/asound.conf to /etc/asound.conf 
+The file contan necessary configuration to work alsa loop sound card
+
+Run /opt/svxbridge/utils/index-audio.py to find number of index for plug_Loopback_1_2 and put this number in txAudioStream() function
+in input_index_device=
+And find number for rxAudioStream() function output_index_device= for Loopback,0
+
+at the start of svxbridge.py
+
+
+
+(0, u'Loopback: PCM (hw:0,0)', 32L)
+(1, u'Loopback: PCM (hw:0,1)', 32L)
+(2, u'sysdefault', 128L)
+(3, u'front', 0L)
+(4, u'surround21', 32L)
+(5, u'surround40', 0L)
+(6, u'surround41', 0L)
+(7, u'surround50', 0L)
+(8, u'surround51', 0L)
+(9, u'surround71', 0L)
+(10, u'plug_Loopback_1_1', 128L)
+(11, u'plug_Loopback_1_2', 0L)
+(12, u'default', 128L)
+
+
+Next copy file from /opt/svxbridge/utils/svxlink.num and restart.num to /etc/spotnik 
+ 
+
+Enable and start svxlink:
+-------------------------
+
+/etc/spotnik/restart.num
+
+
+Tune levels audio in /opt/Analog_Bridge/Analog_Bridge.ini
+---------------------------------------------------------
+
+The audio from DMR to SVXlink:
+------------------------------
+usrpAudio = AUDIO_USE_AGC                
+usrpGain = -16                        
+
+Try adjust from -10 to -20
+
+Instead above you can use following:
+-------------------------------------
+usrpAudio = AUDIO_UNITY                
+usrpGain = 3.8                        
+
+Try adjust from 2.0 to 4.0
+
+
+The audio from SVXLink to DMR:
+------------------------------
+tlvAudio = AUDIO_UNITY                 
+tlvGain = 0.3                          
+
+Try to adjust from 0.1 to 1.0 but before this, you must set correct level audio
+from svxlink (mic gain in alsamixer). I recommended use Echolink PC version
+application and connect to svxlink via echolink and next observe the audio level
+the meter in Echolink application adjust mic gain in alsamixer to set gain audio
+that on the audio  meter will time to time appear in yellow color.
+
+
+After changes you must restart Analog_Bridge:
+
+systemctl restart analog_bridge
+
+
+Known issuse: delay audio about 2 to 3 seconds between analog / DMR/C4FM .
+svxbridge doesn't start as expected if someone speaks on analog or DMR/C4FM.
+
+copy utils/C4FM to /usr/share/svxlink/sounds/fr_FR/
+copy /utils/Logic.tcl to /usr/share/svxlink/events.d/local/
+
+
+Waldek SP2ONG 2020
+Jean-Philippe F5NLG 23/04/2020 for spotnik distrib.
+
+
